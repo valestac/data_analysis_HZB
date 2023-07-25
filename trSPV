@@ -1,0 +1,85 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import CheckButtons
+
+filelist = []
+labels = []
+
+# Define custom names for each index
+custom_names = ['V1262', 'V1263', 'V1264', 'V1271', 'V1272', 'V1273', 'PDI-2', 'PDI-1', 'PDI-3', 'ITO']
+capacity_values = np.loadtxt('G:\\Il mio Drive\\aaaHZB\\DATAAAAA\\SPV trSPV KP\\2023_07_05 SAM screening\\plotting Lead\\stringa.txt')
+
+for i in range(10):  # Iterate from 0 to 9
+    filelist.append("%s\\%s_encapsulatedGlass_front_TD36_withBE_ambient_intens.txt" % (i + 12, i + 12))
+    labels.append(custom_names[i])  # Add the corresponding custom name to the labels list
+
+colors = ['gray', 'cyan', 'green', 'orange', 'purple', 'brown', 'pink', 'red', 'blue', 'black', 'agenta']
+
+fig, ax = plt.subplots()
+lines = []
+
+for i, (fname, label, color) in enumerate(zip(filelist, labels, colors)):
+    try:
+        data = np.loadtxt(fname, skiprows=5, delimiter='\t')  # Specify the correct delimiter if needed
+        X = data[:, 0] - 6.5E-8  # Subtract 6.5E-8 from x-axis values
+        millivoltage = data[:, 1]
+        factor = capacity_values[i]
+        print(f"Curve: {label}, Factor: {factor}")  # Print the curve and corresponding factor
+        Y = millivoltage * 1000 * factor
+
+        line, = ax.semilogx(X, Y, color=color, linestyle='-', linewidth=3, label=label)
+        lines.append(line)
+    except (FileNotFoundError, OSError):
+        print(f"Error: File {fname} not found or could not be read.")
+
+plt.ylabel('SPV Signal [mV]')
+plt.xlabel('Time (log)')
+plt.title('trSPV')
+plt.grid()
+plt.subplots_adjust(left=0.2)  # Adjust the plot area to make room for the checkbox widget
+
+# Create a list of visibility states for each line
+line_visibility = [True] * len(lines)
+
+# Define a function to update the plot visibility
+def update_plot():
+    for line, visibility in zip(lines, line_visibility):
+        line.set_visible(bool(visibility))
+
+    # Update legend based on line visibility
+    legend_lines = [line for line, visibility in zip(lines, line_visibility) if visibility]
+    legend_labels = [line.get_label() for line, visibility in zip(lines, line_visibility) if visibility]
+    ax.legend(legend_lines, legend_labels, fontsize='large')
+
+# Define a function to handle checkbox updates
+def on_checkbox_update(label):
+    if label == 'Toggle All':
+        if all(line_visibility):
+            # If all checkboxes are checked, uncheck them
+            for i in range(len(labels)):
+                line_visibility[i] = False
+        else:
+            # If all checkboxes are unchecked, check them
+            for i in range(len(labels)):
+                line_visibility[i] = True
+    else:
+        # Toggle the state of the clicked checkbox
+        index = labels.index(label)
+        line_visibility[index] = not line_visibility[index]
+
+    update_plot()
+    plt.draw()
+
+# Create checkboxes with labels and initial states, including "Toggle All"
+checkbox_labels = ['Toggle All'] + labels
+checkbox_visibility = [True] + line_visibility
+checkbox_ax = plt.axes([0.01, 0.7, 0.1, 0.3])  # Define the checkbox axes position
+checkbox = CheckButtons(checkbox_ax, checkbox_labels, checkbox_visibility)
+
+# Connect the checkbox function to the checkbox widget
+checkbox.on_clicked(on_checkbox_update)
+
+# Initialize the plot
+update_plot()
+
+plt.show()
